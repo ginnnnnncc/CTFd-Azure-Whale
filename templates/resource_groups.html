@@ -1,0 +1,50 @@
+{% extends "admin/base.html" %}
+
+{% block stylesheets %}
+{% endblock %}
+
+{% block content %}
+	<div class="jumbotron">
+		<div class="container">
+			<h1>Azure Resource Group</h1>
+		</div>
+	</div>
+	<div class="container">
+		<div class="row">
+			<div class="col-md-12">
+				<table class="table table-striped">
+					<thead>
+					<tr>
+						<td class="text-center"><b>ID</b></td>
+						<td class="text-center"><b>Name</b></td>
+						<td class="text-center"><b>Region</b></td>
+						<td class="text-center"><b>Used</b></td>
+						<td class="text-center"><b>Priority</b></td>
+					</tr>
+					</thead>
+					<tbody>
+					{% for group in groups %}
+						<tr>
+							<td class="text-center">
+								{{ group.id }}
+							</td>
+							<td class="text-center">
+                                {{ group.name }}
+							</td>
+							<td class="text-center">
+								{{ group.region }}
+							</td>
+							<td class="text-center">
+                                {{ group.used }}
+							</td>
+							<td class="text-center">
+                                {{ group.priority }}
+							</td>
+                        </tr>
+					{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+{% endblock %}  
