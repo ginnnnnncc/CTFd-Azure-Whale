@@ -4,10 +4,10 @@ from datetime import datetime
 
 from flask import Blueprint
 
-from CTFd.models import db, Challenges
+from CTFd.models import db, Challenges, Flags
+from CTFd.plugins.flags import FlagException, get_flag_class
 from CTFd.plugins.challenges import BaseChallenge
 from CTFd.utils import user as current_user
-from CTFd.plugins.flags import FlagException
 from .decay import DECAY_FUNCTIONS, logarithmic
 
 
@@ -104,24 +104,30 @@ class DynamicValueDockerChallenge(BaseChallenge):
         :param request: The request the user submitted
         :return: (boolean, string)
         """
-        try:
-            super().attempt(challenge, request)
-        except FlagException:
-            data = request.form or request.get_json()
-            submission = data["submission"].strip()
-            
-            user_id = current_user.get_current_user().id
-            q = db.session.query(WhaleContainer)
-            q = q.filter(WhaleContainer.user_id == user_id)
-            q = q.filter(WhaleContainer.challenge_id == challenge.id)
-            records = q.all()
-            if len(records) == 0:
-                return False, "Please solve it during the container is running"
+        data = request.form or request.get_json()
+        submission = data["submission"].strip()
+        
+        flags = Flags.query.filter_by(challenge_id=challenge.id).all()
+        for flag in flags:
+            try:
+                if get_flag_class(flag.type).compare(flag, submission):
+                    return True, "Correct"
+            except FlagException as e:
+                pass
+        
+        user_id = current_user.get_current_user().id
+        q = db.session.query(WhaleContainer)
+        q = q.filter(WhaleContainer.user_id == user_id)
+        q = q.filter(WhaleContainer.challenge_id == challenge.id)
+        q = q.filter(WhaleContainer.status == 'Running')
+        records = q.all()
+        if len(records) == 0:
+            return False, "Please solve it during the container is running"
 
-            container = records[0]
-            if container.flag == submission:
-                return True, "Correct"
-            return False, "Incorrect"
+        container = records[0]
+        if container.flag == submission:
+            return True, "Correct"
+        return False, "Incorrect"
 
     @classmethod
     def solve(cls, user, team, challenge, request):

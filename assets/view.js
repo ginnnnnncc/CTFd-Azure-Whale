@@ -256,7 +256,6 @@ CTFd._internal.challenge.boot = function() {
     loadInfo();
 };
 
-
 CTFd._internal.challenge.submit = function(preview) {
     var challenge_id = parseInt($('#challenge-id').val())
     var submission = $('#challenge-input').val()

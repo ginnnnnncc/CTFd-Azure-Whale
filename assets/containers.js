@@ -4,6 +4,12 @@ function htmlentities(str) {
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+$(".start-time").foreach(function(e) {
+    var date = new Date($(this)[0].innerText);
+    date.setHours(date.getHours() + 8);
+    $(this)[0].innerText = date.toLocaleString();
+});
+
 $(".delete-container").click(function(e) {
     e.preventDefault();
     var container_id = $(this).attr("container-id");
