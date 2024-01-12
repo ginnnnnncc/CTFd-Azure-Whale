@@ -11,6 +11,34 @@ from CTFd.utils import user as current_user
 from .decay import DECAY_FUNCTIONS, logarithmic
 
 
+class DynamicDockerChallenge(Challenges):
+    __mapper_args__ = {"polymorphic_identity": "dynamic_docker"}
+    id = db.Column(None, db.ForeignKey("challenges.id"), primary_key=True)
+
+    dynamic_score = db.Column(db.Integer, default=0)
+    function = db.Column(db.String(32), default="logarithmic")
+    initial = db.Column(db.Integer, default=None)
+    minimum = db.Column(db.Integer, default=None)
+    decay = db.Column(db.Integer, default=None)
+
+    yaml = db.Column(db.Text, nullable=False)
+    container_name = db.Column(db.String(32), nullable=False)
+    port = db.Column(db.Integer, nullable=False, default=80)
+    flag = db.Column(db.String(128), nullable=False)
+    cpu = db.Column(db.Float, nullable=False)
+    
+    def __init__(self, *args, **kwargs):
+        if kwargs.get('initial', None) == '':
+            kwargs["initial"] = None
+        if kwargs.get('minimum', None) == '':
+            kwargs["minimum"] = None
+        if kwargs.get('decay', None) == '':
+            kwargs["decay"] = None
+        if kwargs.get('value', None) == '':
+            kwargs["value"] = None
+        super(DynamicDockerChallenge, self).__init__(**kwargs)
+
+
 class DynamicValueDockerChallenge(BaseChallenge):
     id = "dynamic_docker"  # Unique identifier used to register challenges
     name = "dynamic_docker"  # Name of a challenge type
@@ -33,13 +61,15 @@ class DynamicValueDockerChallenge(BaseChallenge):
         template_folder="templates",
         static_folder="assets",
     )
+    challenge_model = DynamicDockerChallenge
 
     @classmethod
     def calculate_value(cls, challenge):
-        f = DECAY_FUNCTIONS.get(challenge.function, logarithmic)
-        value = f(challenge)
-
-        challenge.value = value
+        if challenge.dynamic_score == 1:
+            f = DECAY_FUNCTIONS.get(challenge.function, logarithmic)
+            value = f(challenge)
+            challenge.value = value
+        
         db.session.commit()
         return challenge
 
@@ -107,14 +137,6 @@ class DynamicValueDockerChallenge(BaseChallenge):
         data = request.form or request.get_json()
         submission = data["submission"].strip()
         
-        flags = Flags.query.filter_by(challenge_id=challenge.id).all()
-        for flag in flags:
-            try:
-                if get_flag_class(flag.type).compare(flag, submission):
-                    return True, "Correct"
-            except FlagException as e:
-                pass
-        
         user_id = current_user.get_current_user().id
         q = db.session.query(WhaleContainer)
         q = q.filter(WhaleContainer.user_id == user_id)
@@ -135,23 +157,6 @@ class DynamicValueDockerChallenge(BaseChallenge):
 
         if challenge.dynamic_score == 1:
             DynamicValueDockerChallenge.calculate_value(challenge)
-
-
-class DynamicDockerChallenge(Challenges):
-    __mapper_args__ = {"polymorphic_identity": "dynamic_docker"}
-    id = db.Column(None, db.ForeignKey("challenges.id"), primary_key=True)
-
-    dynamic_score = db.Column(db.Integer, default=0)
-    function = db.Column(db.String(32), default="logarithmic")
-    initial = db.Column(db.Integer, default=0)
-    minimum = db.Column(db.Integer, default=0)
-    decay = db.Column(db.Integer, default=0)
-
-    yaml = db.Column(db.Text, nullable=False)
-    container_name = db.Column(db.String(32), nullable=False)
-    port = db.Column(db.Integer, nullable=False, default=80)
-    flag = db.Column(db.String(128), nullable=False)
-    cpu = db.Column(db.Float, nullable=False)
 
 
 class WhaleConfig(db.Model):
